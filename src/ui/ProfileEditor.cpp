@@ -9,6 +9,9 @@
 #include <QPushButton>
 #include <QLabel>
 #include <QMessageBox>
+#include <QInputDialog>
+#include <QClipboard>
+#include <QApplication>
 
 ProfileEditor::ProfileEditor(QWidget *parent)
     : QWidget(parent)
@@ -116,6 +119,12 @@ void ProfileEditor::setupUi()
     m_proxyPasswordEdit = new QLineEdit(this);
     m_proxyPasswordEdit->setEchoMode(QLineEdit::Password);
     proxyLayout->addRow("Password:", m_proxyPasswordEdit);
+    
+    // Parse proxy button
+    QPushButton* parseProxyBtn = new QPushButton("Parse Proxy String", this);
+    parseProxyBtn->setToolTip("Parse proxy in format: host:port:username:password");
+    connect(parseProxyBtn, &QPushButton::clicked, this, &ProfileEditor::onParseProxy);
+    proxyLayout->addRow("", parseProxyBtn);
     
     mainLayout->addWidget(proxyGroup);
     
@@ -278,4 +287,60 @@ void ProfileEditor::setProfileToForm(const Profile& profile)
             m_vpnCombo->setCurrentIndex(index);
         }
     }
+}
+
+void ProfileEditor::onParseProxy()
+{
+    // Get proxy string from clipboard or show input dialog
+    QString proxyString = QApplication::clipboard()->text().trimmed();
+    
+    if (proxyString.isEmpty()) {
+        bool ok;
+        proxyString = QInputDialog::getText(this, "Parse Proxy",
+            "Enter proxy string (host:port:username:password):",
+            QLineEdit::Normal, "", &ok);
+        
+        if (!ok || proxyString.isEmpty()) {
+            return;
+        }
+    }
+    
+    // Parse proxy string: host:port:username:password
+    QStringList parts = proxyString.split(":");
+    
+    if (parts.size() < 2) {
+        QMessageBox::warning(this, "Parse Error", 
+            "Invalid proxy format. Expected: host:port:username:password");
+        return;
+    }
+    
+    // Set host
+    m_proxyHostEdit->setText(parts[0].trimmed());
+    
+    // Set port
+    bool portOk;
+    int port = parts[1].trimmed().toInt(&portOk);
+    if (portOk && port > 0 && port <= 65535) {
+        m_proxyPortSpin->setValue(port);
+    }
+    
+    // Set username (if provided)
+    if (parts.size() >= 3) {
+        m_proxyUsernameEdit->setText(parts[2].trimmed());
+    }
+    
+    // Set password (if provided)
+    if (parts.size() >= 4) {
+        m_proxyPasswordEdit->setText(parts[3].trimmed());
+    }
+    
+    // Auto-detect proxy type (default to HTTP)
+    if (m_proxyTypeCombo->currentIndex() == 0) { // If "None" selected
+        m_proxyTypeCombo->setCurrentIndex(1); // Set to HTTP
+    }
+    
+    QMessageBox::information(this, "Success", 
+        QString("Proxy parsed successfully!\nHost: %1\nPort: %2")
+        .arg(parts[0].trimmed())
+        .arg(port));
 }

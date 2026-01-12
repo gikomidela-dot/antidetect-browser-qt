@@ -27,6 +27,7 @@ private slots:
     void onSave();
     void onCancel();
     void onTemplateSelected(int index);
+    void onParseProxy();
     
 private:
     void setupUi();
