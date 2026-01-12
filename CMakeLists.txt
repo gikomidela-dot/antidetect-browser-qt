@@ -18,11 +18,11 @@ find_package(Qt6 REQUIRED COMPONENTS
     WebEngineCore
 )
 
-# OpenSSL for encryption
-find_package(OpenSSL REQUIRED)
+# OpenSSL for encryption (optional, Qt has built-in SSL)
+find_package(OpenSSL)
 
-# SQLite3
-find_package(SQLite3 REQUIRED)
+# SQLite3 (optional, Qt has built-in SQLite)
+find_package(SQLite3)
 
 # Include directories
 include_directories(
@@ -132,10 +132,22 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Sql
     Qt6::WebEngineWidgets
     Qt6::WebEngineCore
-    OpenSSL::SSL
-    OpenSSL::Crypto
-    SQLite::SQLite3
 )
+
+# Link OpenSSL if found
+if(OpenSSL_FOUND)
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        OpenSSL::SSL
+        OpenSSL::Crypto
+    )
+endif()
+
+# Link SQLite3 if found
+if(SQLite3_FOUND)
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        SQLite::SQLite3
+    )
+endif()
 
 # Install
 install(TARGETS ${PROJECT_NAME}
