@@ -30,6 +30,7 @@ private slots:
     
 private:
     void setupUi();
+    QString parseProxyLine(const QString& line);
     
     QTextEdit* m_proxyTextEdit;
     QMap<QString, QCheckBox*> m_userAgentCheckboxes;

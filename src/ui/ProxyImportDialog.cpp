@@ -5,6 +5,8 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QMessageBox>
+#include <QRegularExpression>
+#include <QTextCursor>
 
 ProxyImportDialog::ProxyImportDialog(QWidget *parent)
     : QDialog(parent)
@@ -173,41 +175,176 @@ void ProxyImportDialog::onDeselectAll()
     }
 }
 
+QString ProxyImportDialog::parseProxyLine(const QString& line)
+{
+    QString trimmed = line.trimmed();
+    if (trimmed.isEmpty()) return QString();
+    
+    // Format 1: host:port:username:password (standard)
+    // Example: 103.47.53.144:8442:user:pass
+    if (trimmed.count(':') == 3) {
+        return trimmed;
+    }
+    
+    // Format 2: host:port@username:password
+    // Example: 103.47.53.144:8442@user:pass
+    if (trimmed.contains('@')) {
+        QStringList parts = trimmed.split('@');
+        if (parts.size() == 2) {
+            QString hostPort = parts[0];
+            QString userPass = parts[1];
+            return hostPort + ":" + userPass;
+        }
+    }
+    
+    // Format 3: username:password@host:port
+    // Example: user:pass@103.47.53.144:8442
+    QRegularExpression re1("^([^:]+):([^@]+)@([^:]+):(\\d+)$");
+    QRegularExpressionMatch match1 = re1.match(trimmed);
+    if (match1.hasMatch()) {
+        QString username = match1.captured(1);
+        QString password = match1.captured(2);
+        QString host = match1.captured(3);
+        QString port = match1.captured(4);
+        return QString("%1:%2:%3:%4").arg(host).arg(port).arg(username).arg(password);
+    }
+    
+    // Format 4: host:port (no auth)
+    // Example: 103.47.53.144:8442
+    if (trimmed.count(':') == 1) {
+        QStringList parts = trimmed.split(':');
+        if (parts.size() == 2) {
+            bool ok;
+            parts[1].toInt(&ok);
+            if (ok) {
+                return trimmed + "::"; // Add empty username and password
+            }
+        }
+    }
+    
+    // Format 5: http://host:port or http://username:password@host:port
+    // Example: http://103.47.53.144:8442 or http://user:pass@103.47.53.144:8442
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || 
+        trimmed.startsWith("socks4://") || trimmed.startsWith("socks5://")) {
+        
+        QString cleaned = trimmed;
+        cleaned.remove(QRegularExpression("^(https?|socks[45])://"));
+        
+        // Check if has auth
+        if (cleaned.contains('@')) {
+            QStringList parts = cleaned.split('@');
+            if (parts.size() == 2) {
+                QString userPass = parts[0];
+                QString hostPort = parts[1];
+                return hostPort + ":" + userPass;
+            }
+        } else {
+            // No auth
+            return cleaned + "::";
+        }
+    }
+    
+    // Format 6: IP:PORT|USERNAME:PASSWORD (pipe separator)
+    // Example: 103.47.53.144:8442|user:pass
+    if (trimmed.contains('|')) {
+        QStringList parts = trimmed.split('|');
+        if (parts.size() == 2) {
+            return parts[0] + ":" + parts[1];
+        }
+    }
+    
+    // Format 7: IP PORT USERNAME PASSWORD (space separated)
+    // Example: 103.47.53.144 8442 user pass
+    QStringList spaceParts = trimmed.split(QRegularExpression("\\s+"));
+    if (spaceParts.size() == 4) {
+        bool ok;
+        spaceParts[1].toInt(&ok);
+        if (ok) {
+            return QString("%1:%2:%3:%4")
+                .arg(spaceParts[0])
+                .arg(spaceParts[1])
+                .arg(spaceParts[2])
+                .arg(spaceParts[3]);
+        }
+    } else if (spaceParts.size() == 2) {
+        // IP PORT (no auth)
+        bool ok;
+        spaceParts[1].toInt(&ok);
+        if (ok) {
+            return QString("%1:%2::").arg(spaceParts[0]).arg(spaceParts[1]);
+        }
+    }
+    
+    // Format 8: IP,PORT,USERNAME,PASSWORD (comma separated)
+    // Example: 103.47.53.144,8442,user,pass
+    if (trimmed.contains(',')) {
+        QStringList commaParts = trimmed.split(',');
+        if (commaParts.size() == 4) {
+            return QString("%1:%2:%3:%4")
+                .arg(commaParts[0].trimmed())
+                .arg(commaParts[1].trimmed())
+                .arg(commaParts[2].trimmed())
+                .arg(commaParts[3].trimmed());
+        } else if (commaParts.size() == 2) {
+            return QString("%1:%2::").arg(commaParts[0].trimmed()).arg(commaParts[1].trimmed());
+        }
+    }
+    
+    // Format 9: IP;PORT;USERNAME;PASSWORD (semicolon separated)
+    // Example: 103.47.53.144;8442;user;pass
+    if (trimmed.contains(';')) {
+        QStringList semiParts = trimmed.split(';');
+        if (semiParts.size() == 4) {
+            return QString("%1:%2:%3:%4")
+                .arg(semiParts[0].trimmed())
+                .arg(semiParts[1].trimmed())
+                .arg(semiParts[2].trimmed())
+                .arg(semiParts[3].trimmed());
+        } else if (semiParts.size() == 2) {
+            return QString("%1:%2::").arg(semiParts[0].trimmed()).arg(semiParts[1].trimmed());
+        }
+    }
+    
+    // If nothing matched, return original
+    return trimmed;
+}
+
 void ProxyImportDialog::onProxyTextChanged()
 {
     // Auto-parse proxy format when text changes
     QString text = m_proxyTextEdit->toPlainText();
     
-    // Check if text contains proxy-like pattern
-    if (text.contains(":") && !text.isEmpty()) {
-        QStringList lines = text.split('\n', Qt::SkipEmptyParts);
-        
-        // Format each line if needed
-        QString formattedText;
-        bool needsFormatting = false;
-        
-        for (const QString& line : lines) {
-            QString trimmed = line.trimmed();
-            if (trimmed.isEmpty()) continue;
-            
-            // Check if line is already in correct format (host:port:user:pass)
-            QStringList parts = trimmed.split(':');
-            
-            if (parts.size() >= 2) {
-                // Line looks like proxy format
-                formattedText += trimmed + "\n";
-            } else {
-                // Invalid format, keep as is
-                formattedText += trimmed + "\n";
+    if (text.isEmpty()) return;
+    
+    QStringList lines = text.split('\n', Qt::SkipEmptyParts);
+    QString formattedText;
+    bool hasChanges = false;
+    
+    for (const QString& line : lines) {
+        QString parsed = parseProxyLine(line);
+        if (!parsed.isEmpty()) {
+            formattedText += parsed + "\n";
+            if (parsed != line.trimmed()) {
+                hasChanges = true;
             }
         }
+    }
+    
+    // Only update if formatting changed
+    if (hasChanges && !formattedText.isEmpty()) {
+        // Block signals to prevent recursion
+        m_proxyTextEdit->blockSignals(true);
         
-        // Only update if formatting changed
-        if (needsFormatting && formattedText != text) {
-            // Block signals to prevent recursion
-            m_proxyTextEdit->blockSignals(true);
-            m_proxyTextEdit->setPlainText(formattedText.trimmed());
-            m_proxyTextEdit->blockSignals(false);
-        }
+        // Save cursor position
+        QTextCursor cursor = m_proxyTextEdit->textCursor();
+        int position = cursor.position();
+        
+        m_proxyTextEdit->setPlainText(formattedText.trimmed());
+        
+        // Restore cursor position (approximately)
+        cursor.setPosition(qMin(position, m_proxyTextEdit->toPlainText().length()));
+        m_proxyTextEdit->setTextCursor(cursor);
+        
+        m_proxyTextEdit->blockSignals(false);
     }
 }
