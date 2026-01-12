@@ -38,7 +38,7 @@ private slots:
     void onReloadClicked();
     void onHomeClicked();
     void onNewTabClicked();
-    void onCloseTabClicked();
+    void onCloseTabClicked(int index);
     void onTabChanged(int index);
     
 private:
