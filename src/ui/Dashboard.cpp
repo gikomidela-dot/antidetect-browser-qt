@@ -200,9 +200,15 @@ void Dashboard::onExportCookies()
     
     CookieManager* cm = Application::instance().cookieManager();
     if (cm->exportCookies(profileId, fileName, format)) {
-        QMessageBox::information(this, "Success", "Cookies exported successfully!");
+        QMessageBox::information(this, "Success", 
+            QString("Cookies exported successfully!\n\nFile: %1\nFormat: %2")
+            .arg(fileName)
+            .arg(format));
     } else {
-        QMessageBox::warning(this, "Error", "Failed to export cookies.");
+        QMessageBox::warning(this, "Error", 
+            QString("Failed to export cookies.\n\nProfile: %1\nFile: %2\n\nNote: Make sure the profile has been launched at least once to have cookies.")
+            .arg(profileName)
+            .arg(fileName));
     }
 }
 

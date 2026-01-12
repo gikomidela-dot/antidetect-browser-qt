@@ -16,16 +16,36 @@ CookieManager::CookieManager(QObject* parent)
 
 bool CookieManager::exportCookies(const QString& profileId, const QString& filePath, const QString& format)
 {
+    qDebug() << "CookieManager::exportCookies - ProfileId:" << profileId << "FilePath:" << filePath << "Format:" << format;
+    
     QList<QNetworkCookie> cookies = getCookiesFromProfile(profileId);
     
+    qDebug() << "CookieManager::exportCookies - Found" << cookies.size() << "cookies";
+    
     if (cookies.isEmpty()) {
-        emit exportError("No cookies found for profile: " + profileId);
+        QString errorMsg = QString("No cookies found for profile: %1\n\nCookie storage path: %2")
+            .arg(profileId)
+            .arg(getCookieStoragePath(profileId));
+        qWarning() << errorMsg;
+        emit exportError(errorMsg);
         return false;
+    }
+    
+    // Ensure directory exists
+    QFileInfo fileInfo(filePath);
+    QDir dir = fileInfo.dir();
+    if (!dir.exists()) {
+        qDebug() << "Creating directory:" << dir.absolutePath();
+        dir.mkpath(".");
     }
     
     QFile file(filePath);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        emit exportError("Cannot create file: " + filePath);
+        QString errorMsg = QString("Cannot create file: %1\nError: %2")
+            .arg(filePath)
+            .arg(file.errorString());
+        qWarning() << errorMsg;
+        emit exportError(errorMsg);
         return false;
     }
     
