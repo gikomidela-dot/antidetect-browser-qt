@@ -54,7 +54,8 @@ jobs:
     - name: Deploy Qt dependencies
       run: |
         cd build/Release
-        & "${env:Qt6_DIR}/bin/windeployqt.exe" --release --webenginewidgets AntidetectBrowser.exe
+        $windeployqt = Join-Path $env:Qt6_DIR "bin/windeployqt.exe"
+        & $windeployqt --release --webenginewidgets AntidetectBrowser.exe
     
     - name: Copy OpenSSL DLLs
       run: |
