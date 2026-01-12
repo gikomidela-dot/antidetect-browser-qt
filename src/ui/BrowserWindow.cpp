@@ -1,5 +1,6 @@
 #include "BrowserWindow.h"
 #include "core/Application.h"
+#include "core/CookieManager.h"
 #include "fingerprint/FingerprintManager.h"
 #include "proxy/ProxyManager.h"
 #include <QVBoxLayout>
@@ -9,9 +10,12 @@
 #include <QLabel>
 #include <QWebEnginePage>
 #include <QWebEngineSettings>
+#include <QWebEngineCookieStore>
 #include <QCloseEvent>
 #include <QMessageBox>
 #include <QNetworkProxy>
+#include <QTimer>
+#include <QEventLoop>
 
 BrowserWindow::BrowserWindow(const Profile& profile, QWidget *parent)
     : QMainWindow(parent)
@@ -357,6 +361,48 @@ void BrowserWindow::onTabChanged(int index)
 
 void BrowserWindow::closeEvent(QCloseEvent* event)
 {
+    // Save cookies before closing
+    saveCookies();
+    
     emit windowClosed(m_profile.id());
     event->accept();
+}
+
+void BrowserWindow::saveCookies()
+{
+    if (!m_webProfile) return;
+    
+    // Get cookie store
+    QWebEngineCookieStore* cookieStore = m_webProfile->cookieStore();
+    if (!cookieStore) return;
+    
+    qDebug() << "BrowserWindow::saveCookies - Collecting cookies for profile:" << m_profile.id();
+    
+    // Collect all cookies
+    QList<QNetworkCookie> collectedCookies;
+    
+    // Connect to cookieAdded signal to collect cookies
+    connect(cookieStore, &QWebEngineCookieStore::cookieAdded, this, 
+        [this, &collectedCookies](const QNetworkCookie& cookie) {
+            collectedCookies.append(cookie);
+        }, Qt::DirectConnection);
+    
+    // Load all cookies (this will trigger cookieAdded signals)
+    cookieStore->loadAllCookies();
+    
+    // Wait a bit for cookies to be collected
+    QEventLoop loop;
+    QTimer::singleShot(500, &loop, &QEventLoop::quit);
+    loop.exec();
+    
+    qDebug() << "BrowserWindow::saveCookies - Collected" << collectedCookies.size() << "cookies";
+    
+    // Save to file using CookieManager
+    if (!collectedCookies.isEmpty()) {
+        CookieManager* cm = Application::instance().cookieManager();
+        if (cm) {
+            cm->saveCookiesToProfile(m_profile.id(), collectedCookies);
+            qDebug() << "BrowserWindow::saveCookies - Saved" << collectedCookies.size() << "cookies to file";
+        }
+    }
 }

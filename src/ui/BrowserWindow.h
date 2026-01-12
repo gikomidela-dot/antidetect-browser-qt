@@ -49,6 +49,7 @@ private:
     void createToolbar();
     QWebEngineView* createWebView();
     QWebEngineView* currentWebView();
+    void saveCookies();
     
     Profile m_profile;
     QWebEngineProfile* m_webProfile;
