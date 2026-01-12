@@ -11,6 +11,8 @@
 #include <QFileDialog>
 #include <QProgressDialog>
 #include <QRegularExpression>
+#include <QStandardPaths>
+#include <QDir>
 
 Dashboard::Dashboard(QWidget *parent)
     : QWidget(parent)
@@ -193,10 +195,16 @@ void Dashboard::onExportCookies()
     QString profileId = m_profileTable->item(row, 0)->data(Qt::UserRole).toString();
     QString profileName = m_profileTable->item(row, 0)->text();
     
+    // Use Documents folder as default location
+    QString defaultPath = QDir::toNativeSeparators(
+        QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + 
+        "/" + profileName + "_cookies.json"
+    );
+    
     QString fileName = QFileDialog::getSaveFileName(
         this,
         "Export Cookies",
-        profileName + "_cookies.json",
+        defaultPath,
         "JSON Files (*.json);;Netscape Format (*.txt);;All Files (*)"
     );
     
@@ -204,19 +212,21 @@ void Dashboard::onExportCookies()
         return;
     }
     
+    // Convert to native separators for display
+    QString nativeFileName = QDir::toNativeSeparators(fileName);
     QString format = fileName.endsWith(".txt") ? "netscape" : "json";
     
     CookieManager* cm = Application::instance().cookieManager();
     if (cm->exportCookies(profileId, fileName, format)) {
         QMessageBox::information(this, "Success", 
             QString("Cookies exported successfully!\n\nFile: %1\nFormat: %2")
-            .arg(fileName)
+            .arg(nativeFileName)
             .arg(format));
     } else {
         QMessageBox::warning(this, "Error", 
             QString("Failed to export cookies.\n\nProfile: %1\nFile: %2\n\nNote: Make sure the profile has been launched at least once to have cookies.")
             .arg(profileName)
-            .arg(fileName));
+            .arg(nativeFileName));
     }
 }
 
