@@ -23,7 +23,7 @@ MainWindow::MainWindow(QWidget *parent)
     setupToolBar();
     setupStatusBar();
     
-    setWindowTitle("Antidetect Browser");
+    setWindowTitle("SECTA Anti Detect");
     resize(1200, 800);
 }
 

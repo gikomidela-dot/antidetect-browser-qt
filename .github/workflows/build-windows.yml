@@ -59,7 +59,7 @@ jobs:
         $windeployqt = Join-Path $qtDir "bin/windeployqt.exe"
         Write-Host "Qt directory: $qtDir"
         Write-Host "windeployqt path: $windeployqt"
-        & $windeployqt --release --webenginewidgets AntidetectBrowser.exe
+        & $windeployqt --release --webenginewidgets SECTAAntiDetect.exe
     
     - name: Copy OpenSSL DLLs
       run: |
@@ -70,7 +70,7 @@ jobs:
     - name: Create portable package
       run: |
         cd build
-        $DeployDir = "AntidetectBrowser-Windows-x64"
+        $DeployDir = "SECTA-AntiDetect-Windows-x64"
         New-Item -ItemType Directory -Path $DeployDir -Force
         
         # Copy all files from Release folder
@@ -78,37 +78,40 @@ jobs:
         
         # Create README
         @"
-        Antidetect Browser - Windows x64
-        =================================
+        SECTA Anti Detect - Windows x64
+        ================================
         
-        Double-click AntidetectBrowser.exe to run
+        Double-click SECTAAntiDetect.exe to run
         
         Features:
-        - Browser fingerprint spoofing
+        - Browser fingerprint spoofing (12+ parameters)
+        - Multi-tab support
         - Proxy support (HTTP/HTTPS/SOCKS4/SOCKS5)
-        - VPN integration (OpenVPN, WireGuard, AmneziaWG)
-        - Cookie import/export
-        - TLS fingerprinting
+        - VPN integration (OpenVPN, WireGuard, AmneziaWG, Shadowsocks, V2Ray)
+        - Cookie import/export (JSON, Netscape)
+        - TLS fingerprinting (JA3/JA4)
         - Timezone spoofing
+        - Canvas/WebGL/Audio noise
+        - WebRTC protection
         
         Version: ${{ github.sha }}
         Built: $(Get-Date -Format "yyyy-MM-dd HH:mm")
         "@ | Out-File -FilePath "$DeployDir/README.txt"
         
         # Create ZIP
-        Compress-Archive -Path $DeployDir -DestinationPath "AntidetectBrowser-Windows-x64.zip"
+        Compress-Archive -Path $DeployDir -DestinationPath "SECTA-AntiDetect-Windows-x64.zip"
     
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: AntidetectBrowser-Windows-x64
-        path: build/AntidetectBrowser-Windows-x64.zip
+        name: SECTA-AntiDetect-Windows-x64
+        path: build/SECTA-AntiDetect-Windows-x64.zip
         retention-days: 30
     
     - name: Create Release
       if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v1
       with:
-        files: build/AntidetectBrowser-Windows-x64.zip
+        files: build/SECTA-AntiDetect-Windows-x64.zip
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

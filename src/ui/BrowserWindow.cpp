@@ -51,7 +51,7 @@ BrowserWindow::BrowserWindow(const Profile& profile, QWidget *parent)
     applyFingerprint();
     applyProxy();
     
-    setWindowTitle(QString("Antidetect Browser - %1").arg(m_profile.name()));
+    setWindowTitle(QString("SECTA Anti Detect - %1").arg(m_profile.name()));
     resize(1280, 800);
     
     // Create first tab
@@ -225,7 +225,7 @@ void BrowserWindow::applyProxy()
         
         QNetworkProxy::setApplicationProxy(proxy);
         
-        setWindowTitle(QString("Antidetect Browser - %1 [Proxy: %2:%3]")
+        setWindowTitle(QString("SECTA Anti Detect - %1 [Proxy: %2:%3]")
             .arg(m_profile.name())
             .arg(proxyConfig.host)
             .arg(proxyConfig.port));
