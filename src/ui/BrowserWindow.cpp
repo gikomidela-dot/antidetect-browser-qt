@@ -17,36 +17,33 @@ BrowserWindow::BrowserWindow(const Profile& profile, QWidget *parent)
     : QMainWindow(parent)
     , m_profile(profile)
     , m_webProfile(nullptr)
-    , m_webView(nullptr)
+    , m_tabWidget(nullptr)
     , m_addressBar(nullptr)
     , m_progressBar(nullptr)
+    , m_toolbar(nullptr)
 {
     // Set timezone environment variable BEFORE creating web engine
     if (!m_profile.fingerprint().timezone.isEmpty()) {
         qputenv("TZ", m_profile.fingerprint().timezone.toUtf8());
         
         // Calculate timezone offset for LD_PRELOAD hook
-        // America/Los_Angeles = UTC-8 = -28800 seconds
         QMap<QString, int> timezoneOffsets;
-        timezoneOffsets["America/New_York"] = -18000;      // UTC-5
-        timezoneOffsets["America/Chicago"] = -21600;       // UTC-6
-        timezoneOffsets["America/Denver"] = -25200;        // UTC-7
-        timezoneOffsets["America/Los_Angeles"] = -28800;   // UTC-8
-        timezoneOffsets["America/Anchorage"] = -32400;     // UTC-9
-        timezoneOffsets["Pacific/Honolulu"] = -36000;      // UTC-10
-        timezoneOffsets["Europe/London"] = 0;              // UTC+0
-        timezoneOffsets["Europe/Paris"] = 3600;            // UTC+1
-        timezoneOffsets["Europe/Berlin"] = 3600;           // UTC+1
-        timezoneOffsets["Europe/Moscow"] = 10800;          // UTC+3
-        timezoneOffsets["Asia/Dubai"] = 14400;             // UTC+4
-        timezoneOffsets["Asia/Shanghai"] = 28800;          // UTC+8
-        timezoneOffsets["Asia/Tokyo"] = 32400;             // UTC+9
+        timezoneOffsets["America/New_York"] = -18000;
+        timezoneOffsets["America/Chicago"] = -21600;
+        timezoneOffsets["America/Denver"] = -25200;
+        timezoneOffsets["America/Los_Angeles"] = -28800;
+        timezoneOffsets["America/Anchorage"] = -32400;
+        timezoneOffsets["Pacific/Honolulu"] = -36000;
+        timezoneOffsets["Europe/London"] = 0;
+        timezoneOffsets["Europe/Paris"] = 3600;
+        timezoneOffsets["Europe/Berlin"] = 3600;
+        timezoneOffsets["Europe/Moscow"] = 10800;
+        timezoneOffsets["Asia/Dubai"] = 14400;
+        timezoneOffsets["Asia/Shanghai"] = 28800;
+        timezoneOffsets["Asia/Tokyo"] = 32400;
         
         int offset = timezoneOffsets.value(m_profile.fingerprint().timezone, 0);
         qputenv("ANTIDETECT_TZ_OFFSET", QString::number(offset).toUtf8());
-        
-        qDebug() << "Set TZ environment variable to:" << m_profile.fingerprint().timezone;
-        qDebug() << "Set ANTIDETECT_TZ_OFFSET to:" << offset << "seconds";
     }
     
     setupUi();
@@ -57,8 +54,8 @@ BrowserWindow::BrowserWindow(const Profile& profile, QWidget *parent)
     setWindowTitle(QString("Antidetect Browser - %1").arg(m_profile.name()));
     resize(1280, 800);
     
-    // Navigate to home page
-    navigate("https://www.google.com");
+    // Create first tab
+    newTab("https://www.google.com");
 }
 
 BrowserWindow::~BrowserWindow()
@@ -96,52 +93,63 @@ void BrowserWindow::setupUi()
     m_progressBar->setVisible(false);
     mainLayout->addWidget(m_progressBar);
     
-    // Create web view
-    m_webView = new QWebEngineView(this);
-    mainLayout->addWidget(m_webView);
+    // Create tab widget
+    m_tabWidget = new QTabWidget(this);
+    m_tabWidget->setTabsClosable(true);
+    m_tabWidget->setMovable(true);
+    connect(m_tabWidget, &QTabWidget::currentChanged, this, &BrowserWindow::onTabChanged);
+    connect(m_tabWidget, &QTabWidget::tabCloseRequested, this, &BrowserWindow::onCloseTabClicked);
+    mainLayout->addWidget(m_tabWidget);
     
     setCentralWidget(centralWidget);
 }
 
 void BrowserWindow::createToolbar()
 {
-    QToolBar* toolbar = addToolBar("Navigation");
-    toolbar->setMovable(false);
+    m_toolbar = addToolBar("Navigation");
+    m_toolbar->setMovable(false);
     
     // Back button
-    QAction* backAction = toolbar->addAction("←");
+    QAction* backAction = m_toolbar->addAction("←");
     backAction->setToolTip("Back");
     connect(backAction, &QAction::triggered, this, &BrowserWindow::onBackClicked);
     
     // Forward button
-    QAction* forwardAction = toolbar->addAction("→");
+    QAction* forwardAction = m_toolbar->addAction("→");
     forwardAction->setToolTip("Forward");
     connect(forwardAction, &QAction::triggered, this, &BrowserWindow::onForwardClicked);
     
     // Reload button
-    QAction* reloadAction = toolbar->addAction("⟳");
+    QAction* reloadAction = m_toolbar->addAction("⟳");
     reloadAction->setToolTip("Reload");
     connect(reloadAction, &QAction::triggered, this, &BrowserWindow::onReloadClicked);
     
     // Home button
-    QAction* homeAction = toolbar->addAction("⌂");
+    QAction* homeAction = m_toolbar->addAction("⌂");
     homeAction->setToolTip("Home");
     connect(homeAction, &QAction::triggered, this, &BrowserWindow::onHomeClicked);
     
-    toolbar->addSeparator();
+    m_toolbar->addSeparator();
+    
+    // New tab button
+    QAction* newTabAction = m_toolbar->addAction("+ New Tab");
+    newTabAction->setToolTip("Open new tab");
+    connect(newTabAction, &QAction::triggered, this, &BrowserWindow::onNewTabClicked);
+    
+    m_toolbar->addSeparator();
     
     // Check IP button
-    QAction* checkIPAction = toolbar->addAction("Check IP");
+    QAction* checkIPAction = m_toolbar->addAction("Check IP");
     checkIPAction->setToolTip("Check your IP address");
     connect(checkIPAction, &QAction::triggered, this, [this]() {
         navigate("https://api.ipify.org?format=json");
     });
     
-    toolbar->addSeparator();
+    m_toolbar->addSeparator();
     
     // Profile info
     QLabel* profileLabel = new QLabel(QString("Profile: %1").arg(m_profile.name()), this);
-    toolbar->addWidget(profileLabel);
+    m_toolbar->addWidget(profileLabel);
 }
 
 void BrowserWindow::setupWebEngine()
@@ -158,10 +166,15 @@ void BrowserWindow::setupWebEngine()
     QString dataDir = Application::instance().dataDirectory();
     m_webProfile->setPersistentStoragePath(dataDir + "/sessions/" + m_profile.id());
     m_webProfile->setCachePath(dataDir + "/cache/" + m_profile.id());
+}
+
+QWebEngineView* BrowserWindow::createWebView()
+{
+    QWebEngineView* webView = new QWebEngineView(this);
     
-    // Create page with profile
-    QWebEnginePage* page = new QWebEnginePage(m_webProfile, m_webView);
-    m_webView->setPage(page);
+    // Create page with shared profile
+    QWebEnginePage* page = new QWebEnginePage(m_webProfile, webView);
+    webView->setPage(page);
     
     // Configure page settings
     QWebEngineSettings* settings = page->settings();
@@ -171,9 +184,26 @@ void BrowserWindow::setupWebEngine()
     settings->setAttribute(QWebEngineSettings::AllowGeolocationOnInsecureOrigins, false);
     
     // Connect signals
-    connect(m_webView, &QWebEngineView::urlChanged, this, &BrowserWindow::onUrlChanged);
-    connect(m_webView, &QWebEngineView::loadProgress, this, &BrowserWindow::onLoadProgress);
-    connect(m_webView, &QWebEngineView::loadFinished, this, &BrowserWindow::onLoadFinished);
+    connect(webView, &QWebEngineView::urlChanged, this, &BrowserWindow::onUrlChanged);
+    connect(webView, &QWebEngineView::loadProgress, this, &BrowserWindow::onLoadProgress);
+    connect(webView, &QWebEngineView::loadFinished, this, &BrowserWindow::onLoadFinished);
+    connect(webView, &QWebEngineView::titleChanged, this, [this, webView](const QString& title) {
+        int index = m_tabWidget->indexOf(webView);
+        if (index >= 0) {
+            QString tabTitle = title.isEmpty() ? "New Tab" : title;
+            if (tabTitle.length() > 30) {
+                tabTitle = tabTitle.left(27) + "...";
+            }
+            m_tabWidget->setTabText(index, tabTitle);
+        }
+    });
+    
+    return webView;
+}
+
+QWebEngineView* BrowserWindow::currentWebView()
+{
+    return qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget());
 }
 
 void BrowserWindow::applyFingerprint()
@@ -193,32 +223,22 @@ void BrowserWindow::applyProxy()
         ProxyManager* proxyManager = Application::instance().proxyManager();
         QNetworkProxy proxy = proxyManager->createProxy(proxyConfig);
         
-        // Set application-wide proxy (affects all network requests)
-        // Note: Qt WebEngine uses Chromium's network stack which respects QNetworkProxy
         QNetworkProxy::setApplicationProxy(proxy);
         
-        qDebug() << "Proxy configured:" << proxyConfig.toString();
-        qDebug() << "Proxy type:" << proxy.type();
-        qDebug() << "Proxy host:" << proxy.hostName() << ":" << proxy.port();
-        
-        if (!proxy.user().isEmpty()) {
-            qDebug() << "Proxy auth: user =" << proxy.user();
-        }
-        
-        // Show proxy status in window title
         setWindowTitle(QString("Antidetect Browser - %1 [Proxy: %2:%3]")
             .arg(m_profile.name())
             .arg(proxyConfig.host)
             .arg(proxyConfig.port));
     } else {
-        // No proxy - use direct connection
         QNetworkProxy::setApplicationProxy(QNetworkProxy::NoProxy);
-        qDebug() << "No proxy configured, using direct connection";
     }
 }
 
 void BrowserWindow::navigate(const QString& url)
 {
+    QWebEngineView* webView = currentWebView();
+    if (!webView) return;
+    
     QString finalUrl = url;
     
     // Add http:// if no scheme
@@ -226,30 +246,52 @@ void BrowserWindow::navigate(const QString& url)
         finalUrl = "http://" + finalUrl;
     }
     
-    m_webView->load(QUrl(finalUrl));
+    webView->load(QUrl(finalUrl));
+}
+
+void BrowserWindow::newTab(const QString& url)
+{
+    QWebEngineView* webView = createWebView();
+    
+    QString tabTitle = "New Tab";
+    int index = m_tabWidget->addTab(webView, tabTitle);
+    m_tabWidget->setCurrentIndex(index);
+    
+    if (!url.isEmpty()) {
+        QString finalUrl = url;
+        if (!finalUrl.contains("://")) {
+            finalUrl = "http://" + finalUrl;
+        }
+        webView->load(QUrl(finalUrl));
+    }
 }
 
 void BrowserWindow::onUrlChanged(const QUrl& url)
 {
-    m_addressBar->setText(url.toString());
+    QWebEngineView* webView = currentWebView();
+    if (webView == sender()) {
+        m_addressBar->setText(url.toString());
+    }
 }
 
 void BrowserWindow::onLoadProgress(int progress)
 {
-    if (progress < 100) {
-        m_progressBar->setVisible(true);
-        m_progressBar->setValue(progress);
-    } else {
-        m_progressBar->setVisible(false);
+    QWebEngineView* webView = currentWebView();
+    if (webView == sender()) {
+        if (progress < 100) {
+            m_progressBar->setVisible(true);
+            m_progressBar->setValue(progress);
+        } else {
+            m_progressBar->setVisible(false);
+        }
     }
 }
 
 void BrowserWindow::onLoadFinished(bool success)
 {
-    m_progressBar->setVisible(false);
-    
-    if (!success) {
-        qWarning() << "Failed to load page";
+    QWebEngineView* webView = currentWebView();
+    if (webView == sender()) {
+        m_progressBar->setVisible(false);
     }
 }
 
@@ -261,22 +303,56 @@ void BrowserWindow::onAddressBarReturn()
 
 void BrowserWindow::onBackClicked()
 {
-    m_webView->back();
+    QWebEngineView* webView = currentWebView();
+    if (webView) {
+        webView->back();
+    }
 }
 
 void BrowserWindow::onForwardClicked()
 {
-    m_webView->forward();
+    QWebEngineView* webView = currentWebView();
+    if (webView) {
+        webView->forward();
+    }
 }
 
 void BrowserWindow::onReloadClicked()
 {
-    m_webView->reload();
+    QWebEngineView* webView = currentWebView();
+    if (webView) {
+        webView->reload();
+    }
 }
 
 void BrowserWindow::onHomeClicked()
 {
     navigate("https://www.google.com");
+}
+
+void BrowserWindow::onNewTabClicked()
+{
+    newTab("https://www.google.com");
+}
+
+void BrowserWindow::onCloseTabClicked(int index)
+{
+    if (m_tabWidget->count() > 1) {
+        QWidget* widget = m_tabWidget->widget(index);
+        m_tabWidget->removeTab(index);
+        widget->deleteLater();
+    } else {
+        // Last tab - close window
+        close();
+    }
+}
+
+void BrowserWindow::onTabChanged(int index)
+{
+    QWebEngineView* webView = currentWebView();
+    if (webView) {
+        m_addressBar->setText(webView->url().toString());
+    }
 }
 
 void BrowserWindow::closeEvent(QCloseEvent* event)
