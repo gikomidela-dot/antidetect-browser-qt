@@ -292,5 +292,10 @@ QList<QNetworkCookie> CookieManager::cookiesFromNetscape(const QString& content)
 QString CookieManager::getCookieStoragePath(const QString& profileId)
 {
     QString dataDir = Application::instance().dataDirectory();
-    return dataDir + "/cookies/" + profileId + ".json";
+    QString path = QDir(dataDir).filePath("cookies");
+    QDir cookieDir(path);
+    if (!cookieDir.exists()) {
+        cookieDir.mkpath(".");
+    }
+    return QDir(path).filePath(profileId + ".json");
 }
