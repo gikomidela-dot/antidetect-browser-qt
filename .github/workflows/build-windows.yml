@@ -54,7 +54,11 @@ jobs:
     - name: Deploy Qt dependencies
       run: |
         cd build/Release
-        $windeployqt = Join-Path $env:Qt6_DIR "bin/windeployqt.exe"
+        $qtDir = $env:QT_ROOT_DIR
+        if (-not $qtDir) { $qtDir = $env:Qt6_DIR }
+        $windeployqt = Join-Path $qtDir "bin/windeployqt.exe"
+        Write-Host "Qt directory: $qtDir"
+        Write-Host "windeployqt path: $windeployqt"
         & $windeployqt --release --webenginewidgets AntidetectBrowser.exe
     
     - name: Copy OpenSSL DLLs
