@@ -57,7 +57,7 @@ void Dashboard::setupUi()
     connect(m_launchButton, &QPushButton::clicked, this, &Dashboard::onLaunchProfile);
     buttonLayout->addWidget(m_launchButton);
     
-    buttonLayout->addSeparator();
+    buttonLayout->addSpacing(20);
     
     m_exportCookiesButton = new QPushButton("Export Cookies", this);
     connect(m_exportCookiesButton, &QPushButton::clicked, this, &Dashboard::onExportCookies);
