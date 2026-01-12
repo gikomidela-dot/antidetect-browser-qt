@@ -71,6 +71,7 @@ set(SOURCES
     src/ui/Dashboard.cpp
     src/ui/BrowserWindow.cpp
     src/ui/VPNImportDialog.cpp
+    src/ui/ProxyImportDialog.cpp
     src/automation/BrowserAutomation.cpp
     src/automation/CookieRobot.cpp
 )
@@ -105,6 +106,7 @@ set(HEADERS
     src/ui/Dashboard.h
     src/ui/BrowserWindow.h
     src/ui/VPNImportDialog.h
+    src/ui/ProxyImportDialog.h
     src/automation/BrowserAutomation.h
     src/automation/CookieRobot.h
 )

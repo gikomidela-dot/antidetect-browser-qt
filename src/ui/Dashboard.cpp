@@ -1,4 +1,5 @@
 #include "Dashboard.h"
+#include "ProxyImportDialog.h"
 #include "core/Application.h"
 #include "core/BrowserWindowManager.h"
 #include "core/CookieManager.h"
@@ -8,6 +9,7 @@
 #include <QHeaderView>
 #include <QMessageBox>
 #include <QFileDialog>
+#include <QProgressDialog>
 
 Dashboard::Dashboard(QWidget *parent)
     : QWidget(parent)
@@ -44,6 +46,11 @@ void Dashboard::setupUi()
     m_createButton = new QPushButton("Create Profile", this);
     connect(m_createButton, &QPushButton::clicked, this, &Dashboard::onCreateProfile);
     buttonLayout->addWidget(m_createButton);
+    
+    QPushButton* massImportBtn = new QPushButton("Mass Import Proxy", this);
+    massImportBtn->setToolTip("Import multiple proxies and create profiles automatically");
+    connect(massImportBtn, &QPushButton::clicked, this, &Dashboard::onMassImportProxy);
+    buttonLayout->addWidget(massImportBtn);
     
     m_editButton = new QPushButton("Edit", this);
     connect(m_editButton, &QPushButton::clicked, this, &Dashboard::onEditProfile);
@@ -240,5 +247,78 @@ void Dashboard::onImportCookies()
         QMessageBox::information(this, "Success", "Cookies imported successfully!");
     } else {
         QMessageBox::warning(this, "Error", "Failed to import cookies.");
+    }
+}
+
+void Dashboard::onMassImportProxy()
+{
+    ProxyImportDialog dialog(this);
+    if (dialog.exec() == QDialog::Accepted) {
+        ProxyImportDialog::ImportResult result = dialog.getResult();
+        
+        int totalProfiles = result.proxyList.size() * result.selectedUserAgents.size();
+        
+        QProgressDialog progress("Creating profiles...", "Cancel", 0, totalProfiles, this);
+        progress.setWindowModality(Qt::WindowModal);
+        progress.setMinimumDuration(0);
+        
+        ProfileManager* pm = Application::instance().profileManager();
+        int created = 0;
+        int counter = 1;
+        
+        for (const QString& proxyString : result.proxyList) {
+            // Parse proxy: host:port:username:password
+            QStringList parts = proxyString.split(":");
+            if (parts.size() < 2) continue;
+            
+            QString host = parts[0].trimmed();
+            int port = parts[1].trimmed().toInt();
+            QString username = parts.size() >= 3 ? parts[2].trimmed() : "";
+            QString password = parts.size() >= 4 ? parts[3].trimmed() : "";
+            
+            for (const QString& uaTemplate : result.selectedUserAgents) {
+                if (progress.wasCanceled()) {
+                    break;
+                }
+                
+                // Create profile from template
+                Profile profile = pm->createFromTemplate(uaTemplate);
+                
+                // Set name
+                profile.setName(QString("Profile_%1_%2").arg(counter).arg(uaTemplate.left(10)));
+                
+                // Set proxy
+                ProxyConfig proxy;
+                proxy.type = ProxyConfig::HTTP;
+                proxy.host = host;
+                proxy.port = port;
+                proxy.username = username;
+                proxy.password = password;
+                profile.setProxy(proxy);
+                
+                // Set tags
+                profile.setTags(QStringList() << "mass-import" << host);
+                
+                // Create profile
+                if (pm->createProfile(profile)) {
+                    created++;
+                }
+                
+                counter++;
+                progress.setValue(created);
+            }
+            
+            if (progress.wasCanceled()) {
+                break;
+            }
+        }
+        
+        progress.setValue(totalProfiles);
+        
+        // Refresh table
+        loadProfiles();
+        
+        QMessageBox::information(this, "Success", 
+            QString("Successfully created %1 profiles!").arg(created));
     }
 }

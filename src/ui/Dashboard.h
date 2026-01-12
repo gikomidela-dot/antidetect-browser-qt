@@ -29,6 +29,7 @@ private slots:
     void onSearchTextChanged(const QString& text);
     void onExportCookies();
     void onImportCookies();
+    void onMassImportProxy();
     
 private:
     void setupUi();
