@@ -51,15 +51,23 @@ void ProxyImportDialog::setupUi()
     
     uaLayout->addLayout(selectLayout);
     
-    // User Agent checkboxes
+    // User Agent checkboxes with real data
     QStringList userAgents = {
-        "Windows 10 - Chrome 120",
-        "Windows 11 - Chrome 121",
-        "macOS Sonoma - Safari 17",
-        "macOS Ventura - Chrome 120",
-        "Linux Ubuntu - Firefox 121",
-        "Android 14 - Chrome Mobile",
-        "iOS 17 - Safari Mobile"
+        "Windows 10 - Chrome 120 (1920x1080)",
+        "Windows 10 - Chrome 121 (1366x768)",
+        "Windows 11 - Chrome 120 (2560x1440)",
+        "Windows 11 - Edge 120 (1920x1080)",
+        "Windows 11 - Firefox 121 (1920x1080)",
+        "macOS Sonoma - Safari 17 (1920x1080)",
+        "macOS Sonoma - Chrome 120 (2560x1440)",
+        "macOS Ventura - Safari 16 (1440x900)",
+        "macOS Ventura - Chrome 119 (1920x1080)",
+        "Linux Ubuntu - Firefox 121 (1920x1080)",
+        "Linux Ubuntu - Chrome 120 (1366x768)",
+        "Android 14 - Chrome Mobile (412x915)",
+        "Android 13 - Chrome Mobile (360x800)",
+        "iOS 17 - Safari Mobile (390x844)",
+        "iOS 16 - Safari Mobile (375x667)"
     };
     
     for (const QString& ua : userAgents) {

@@ -10,6 +10,7 @@
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QProgressDialog>
+#include <QRegularExpression>
 
 Dashboard::Dashboard(QWidget *parent)
     : QWidget(parent)
@@ -250,6 +251,102 @@ void Dashboard::onImportCookies()
     }
 }
 
+Profile Dashboard::createProfileFromUserAgent(const QString& uaString)
+{
+    Profile profile;
+    ProfileManager* pm = Application::instance().profileManager();
+    
+    // Parse: "Windows 10 - Chrome 120 (1920x1080)"
+    QRegularExpression re("^(.+?)\\s+-\\s+(.+?)\\s+\\((\\d+)x(\\d+)\\)$");
+    QRegularExpressionMatch match = re.match(uaString);
+    
+    QString os, browser;
+    int screenWidth = 1920, screenHeight = 1080;
+    
+    if (match.hasMatch()) {
+        os = match.captured(1).trimmed();
+        browser = match.captured(2).trimmed();
+        screenWidth = match.captured(3).toInt();
+        screenHeight = match.captured(4).toInt();
+    }
+    
+    // Get base template
+    QString templateName;
+    if (os.contains("Windows")) {
+        templateName = "Windows 10";
+    } else if (os.contains("macOS")) {
+        templateName = "macOS Sonoma";
+    } else if (os.contains("Linux")) {
+        templateName = "Linux Ubuntu";
+    } else if (os.contains("Android")) {
+        templateName = "Android 14";
+    } else if (os.contains("iOS")) {
+        templateName = "iOS 17";
+    } else {
+        templateName = "Windows 10";
+    }
+    
+    profile = pm->createFromTemplate(templateName);
+    
+    // Update fingerprint with real User Agent
+    FingerprintConfig fp = profile.fingerprint();
+    
+    // Set screen resolution
+    fp.screenWidth = screenWidth;
+    fp.screenHeight = screenHeight;
+    
+    // Generate real User Agent
+    if (os.contains("Windows 10") && browser.contains("Chrome 120")) {
+        fp.userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+        fp.platform = "Win32";
+    } else if (os.contains("Windows 10") && browser.contains("Chrome 121")) {
+        fp.userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36";
+        fp.platform = "Win32";
+    } else if (os.contains("Windows 11") && browser.contains("Chrome 120")) {
+        fp.userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+        fp.platform = "Win32";
+    } else if (os.contains("Windows 11") && browser.contains("Edge 120")) {
+        fp.userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0";
+        fp.platform = "Win32";
+    } else if (os.contains("Windows 11") && browser.contains("Firefox 121")) {
+        fp.userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0";
+        fp.platform = "Win32";
+    } else if (os.contains("macOS Sonoma") && browser.contains("Safari 17")) {
+        fp.userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15";
+        fp.platform = "MacIntel";
+    } else if (os.contains("macOS Sonoma") && browser.contains("Chrome 120")) {
+        fp.userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+        fp.platform = "MacIntel";
+    } else if (os.contains("macOS Ventura") && browser.contains("Safari 16")) {
+        fp.userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Safari/605.1.15";
+        fp.platform = "MacIntel";
+    } else if (os.contains("macOS Ventura") && browser.contains("Chrome 119")) {
+        fp.userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36";
+        fp.platform = "MacIntel";
+    } else if (os.contains("Linux") && browser.contains("Firefox 121")) {
+        fp.userAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0";
+        fp.platform = "Linux x86_64";
+    } else if (os.contains("Linux") && browser.contains("Chrome 120")) {
+        fp.userAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+        fp.platform = "Linux x86_64";
+    } else if (os.contains("Android 14")) {
+        fp.userAgent = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.144 Mobile Safari/537.36";
+        fp.platform = "Linux armv8l";
+    } else if (os.contains("Android 13")) {
+        fp.userAgent = "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.144 Mobile Safari/537.36";
+        fp.platform = "Linux armv8l";
+    } else if (os.contains("iOS 17")) {
+        fp.userAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Mobile/15E148 Safari/604.1";
+        fp.platform = "iPhone";
+    } else if (os.contains("iOS 16")) {
+        fp.userAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1";
+        fp.platform = "iPhone";
+    }
+    
+    profile.setFingerprint(fp);
+    return profile;
+}
+
 void Dashboard::onMassImportProxy()
 {
     ProxyImportDialog dialog(this);
@@ -262,7 +359,6 @@ void Dashboard::onMassImportProxy()
         progress.setWindowModality(Qt::WindowModal);
         progress.setMinimumDuration(0);
         
-        ProfileManager* pm = Application::instance().profileManager();
         int created = 0;
         int counter = 1;
         
@@ -276,16 +372,16 @@ void Dashboard::onMassImportProxy()
             QString username = parts.size() >= 3 ? parts[2].trimmed() : "";
             QString password = parts.size() >= 4 ? parts[3].trimmed() : "";
             
-            for (const QString& uaTemplate : result.selectedUserAgents) {
+            for (const QString& uaString : result.selectedUserAgents) {
                 if (progress.wasCanceled()) {
                     break;
                 }
                 
-                // Create profile from template
-                Profile profile = pm->createFromTemplate(uaTemplate);
+                // Create profile with real User Agent
+                Profile profile = createProfileFromUserAgent(uaString);
                 
                 // Set name
-                profile.setName(QString("Profile_%1_%2").arg(counter).arg(uaTemplate.left(10)));
+                profile.setName(QString("Profile_%1_%2").arg(counter).arg(uaString.left(20)));
                 
                 // Set proxy
                 ProxyConfig proxy;
@@ -300,6 +396,7 @@ void Dashboard::onMassImportProxy()
                 profile.setTags(QStringList() << "mass-import" << host);
                 
                 // Create profile
+                ProfileManager* pm = Application::instance().profileManager();
                 if (pm->createProfile(profile)) {
                     created++;
                 }

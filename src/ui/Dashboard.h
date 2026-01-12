@@ -5,6 +5,7 @@
 #include <QTableWidget>
 #include <QPushButton>
 #include <QLineEdit>
+#include "profiles/Profile.h"
 
 class Dashboard : public QWidget
 {
@@ -35,6 +36,7 @@ private:
     void setupUi();
     void loadProfiles();
     void filterProfiles(const QString& query);
+    Profile createProfileFromUserAgent(const QString& uaString);
     
     QTableWidget* m_profileTable;
     QPushButton* m_createButton;
