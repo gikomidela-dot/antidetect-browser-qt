@@ -16,14 +16,14 @@ jobs:
       uses: actions/checkout@v3
     
     - name: Install Qt
-      uses: jurplel/install-qt-action@v3
+      uses: jurplel/install-qt-action@v4
       with:
         version: '6.5.3'
         host: 'windows'
         target: 'desktop'
         arch: 'win64_mingw'
         modules: 'qtwebengine qtwebchannel qtpositioning'
-        cache: true
+        cache: false
     
     - name: Install OpenSSL
       run: |
