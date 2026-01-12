@@ -27,6 +27,7 @@ void ProxyImportDialog::setupUi()
     
     m_proxyTextEdit = new QTextEdit(this);
     m_proxyTextEdit->setPlaceholderText("103.47.53.144:8442:user:pass\n104.48.54.145:8443:user2:pass2\n...");
+    connect(m_proxyTextEdit, &QTextEdit::textChanged, this, &ProxyImportDialog::onProxyTextChanged);
     proxyLayout->addWidget(m_proxyTextEdit);
     
     mainLayout->addWidget(proxyGroup);
@@ -169,5 +170,44 @@ void ProxyImportDialog::onDeselectAll()
 {
     for (QCheckBox* checkbox : m_userAgentCheckboxes) {
         checkbox->setChecked(false);
+    }
+}
+
+void ProxyImportDialog::onProxyTextChanged()
+{
+    // Auto-parse proxy format when text changes
+    QString text = m_proxyTextEdit->toPlainText();
+    
+    // Check if text contains proxy-like pattern
+    if (text.contains(":") && !text.isEmpty()) {
+        QStringList lines = text.split('\n', Qt::SkipEmptyParts);
+        
+        // Format each line if needed
+        QString formattedText;
+        bool needsFormatting = false;
+        
+        for (const QString& line : lines) {
+            QString trimmed = line.trimmed();
+            if (trimmed.isEmpty()) continue;
+            
+            // Check if line is already in correct format (host:port:user:pass)
+            QStringList parts = trimmed.split(':');
+            
+            if (parts.size() >= 2) {
+                // Line looks like proxy format
+                formattedText += trimmed + "\n";
+            } else {
+                // Invalid format, keep as is
+                formattedText += trimmed + "\n";
+            }
+        }
+        
+        // Only update if formatting changed
+        if (needsFormatting && formattedText != text) {
+            // Block signals to prevent recursion
+            m_proxyTextEdit->blockSignals(true);
+            m_proxyTextEdit->setPlainText(formattedText.trimmed());
+            m_proxyTextEdit->blockSignals(false);
+        }
     }
 }

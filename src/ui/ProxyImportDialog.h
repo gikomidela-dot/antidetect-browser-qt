@@ -26,6 +26,7 @@ private slots:
     void onCancel();
     void onSelectAll();
     void onDeselectAll();
+    void onProxyTextChanged();
     
 private:
     void setupUi();
