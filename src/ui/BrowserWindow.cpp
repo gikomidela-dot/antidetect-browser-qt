@@ -175,14 +175,14 @@ void BrowserWindow::setupWebEngine()
     QWebEngineCookieStore* cookieStore = m_webProfile->cookieStore();
     if (cookieStore) {
         connect(cookieStore, &QWebEngineCookieStore::cookieAdded, this, 
-            [this](const QNetworkCookie& cookie) {
+            [this](const QNetworkCookie& cookie) mutable {
                 // Store cookie in our collection
                 m_cookies.append(cookie);
                 qDebug() << "Cookie added:" << cookie.name() << "from" << cookie.domain();
             });
         
         connect(cookieStore, &QWebEngineCookieStore::cookieRemoved, this,
-            [this](const QNetworkCookie& cookie) {
+            [this](const QNetworkCookie& cookie) mutable {
                 // Remove cookie from our collection
                 m_cookies.removeAll(cookie);
                 qDebug() << "Cookie removed:" << cookie.name();
