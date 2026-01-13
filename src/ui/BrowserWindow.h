@@ -57,6 +57,7 @@ private:
     QLineEdit* m_addressBar;
     QProgressBar* m_progressBar;
     QToolBar* m_toolbar;
+    QList<QNetworkCookie> m_cookies;
 };
 
 #endif // BROWSERWINDOW_H

@@ -170,6 +170,24 @@ void BrowserWindow::setupWebEngine()
     QString dataDir = Application::instance().dataDirectory();
     m_webProfile->setPersistentStoragePath(dataDir + "/sessions/" + m_profile.id());
     m_webProfile->setCachePath(dataDir + "/cache/" + m_profile.id());
+    
+    // Setup cookie monitoring - track cookies as they are added
+    QWebEngineCookieStore* cookieStore = m_webProfile->cookieStore();
+    if (cookieStore) {
+        connect(cookieStore, &QWebEngineCookieStore::cookieAdded, this, 
+            [this](const QNetworkCookie& cookie) {
+                // Store cookie in our collection
+                m_cookies.append(cookie);
+                qDebug() << "Cookie added:" << cookie.name() << "from" << cookie.domain();
+            });
+        
+        connect(cookieStore, &QWebEngineCookieStore::cookieRemoved, this,
+            [this](const QNetworkCookie& cookie) {
+                // Remove cookie from our collection
+                m_cookies.removeAll(cookie);
+                qDebug() << "Cookie removed:" << cookie.name();
+            });
+    }
 }
 
 QWebEngineView* BrowserWindow::createWebView()
@@ -370,39 +388,21 @@ void BrowserWindow::closeEvent(QCloseEvent* event)
 
 void BrowserWindow::saveCookies()
 {
-    if (!m_webProfile) return;
-    
-    // Get cookie store
-    QWebEngineCookieStore* cookieStore = m_webProfile->cookieStore();
-    if (!cookieStore) return;
-    
-    qDebug() << "BrowserWindow::saveCookies - Collecting cookies for profile:" << m_profile.id();
-    
-    // Collect all cookies
-    QList<QNetworkCookie> collectedCookies;
-    
-    // Connect to cookieAdded signal to collect cookies
-    connect(cookieStore, &QWebEngineCookieStore::cookieAdded, this, 
-        [this, &collectedCookies](const QNetworkCookie& cookie) {
-            collectedCookies.append(cookie);
-        }, Qt::DirectConnection);
-    
-    // Load all cookies (this will trigger cookieAdded signals)
-    cookieStore->loadAllCookies();
-    
-    // Wait a bit for cookies to be collected
-    QEventLoop loop;
-    QTimer::singleShot(500, &loop, &QEventLoop::quit);
-    loop.exec();
-    
-    qDebug() << "BrowserWindow::saveCookies - Collected" << collectedCookies.size() << "cookies";
+    qDebug() << "BrowserWindow::saveCookies - Saving cookies for profile:" << m_profile.id();
+    qDebug() << "BrowserWindow::saveCookies - Total cookies collected:" << m_cookies.size();
     
     // Save to file using CookieManager
-    if (!collectedCookies.isEmpty()) {
+    if (!m_cookies.isEmpty()) {
         CookieManager* cm = Application::instance().cookieManager();
         if (cm) {
-            cm->saveCookiesToProfile(m_profile.id(), collectedCookies);
-            qDebug() << "BrowserWindow::saveCookies - Saved" << collectedCookies.size() << "cookies to file";
+            bool success = cm->saveCookiesToProfile(m_profile.id(), m_cookies);
+            if (success) {
+                qDebug() << "BrowserWindow::saveCookies - Successfully saved" << m_cookies.size() << "cookies to file";
+            } else {
+                qWarning() << "BrowserWindow::saveCookies - Failed to save cookies to file";
+            }
         }
+    } else {
+        qWarning() << "BrowserWindow::saveCookies - No cookies to save";
     }
 }
