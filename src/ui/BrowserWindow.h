@@ -8,6 +8,7 @@
 #include <QProgressBar>
 #include <QTabWidget>
 #include <QToolBar>
+#include <QNetworkCookie>
 #include "profiles/Profile.h"
 
 class BrowserWindow : public QMainWindow
