@@ -1,5 +1,6 @@
 #include "UndetectableStealth.h"
 #include <QWebEngineScript>
+#include <QWebEngineScriptCollection>
 
 void UndetectableStealth::applyStealthMode(QWebEnginePage* page)
 {
