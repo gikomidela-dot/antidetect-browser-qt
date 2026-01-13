@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=SECTA Anti Detect
+Exec=SECTAAntiDetect
+Icon=secta
+Categories=Network;WebBrowser;
+Terminal=false

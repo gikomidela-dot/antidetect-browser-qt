@@ -37,6 +37,7 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/src/api
     ${CMAKE_SOURCE_DIR}/src/ui
     ${CMAKE_SOURCE_DIR}/src/automation
+    ${CMAKE_SOURCE_DIR}/src/stealth
 )
 
 # Source files
@@ -74,6 +75,7 @@ set(SOURCES
     src/ui/ProxyImportDialog.cpp
     src/automation/BrowserAutomation.cpp
     src/automation/CookieRobot.cpp
+    src/stealth/UndetectableStealth.cpp
 )
 
 set(HEADERS
@@ -109,6 +111,7 @@ set(HEADERS
     src/ui/ProxyImportDialog.h
     src/automation/BrowserAutomation.h
     src/automation/CookieRobot.h
+    src/stealth/UndetectableStealth.h
 )
 
 # UI files

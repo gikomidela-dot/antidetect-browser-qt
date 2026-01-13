@@ -3,6 +3,7 @@
 #include "core/CookieManager.h"
 #include "fingerprint/FingerprintManager.h"
 #include "proxy/ProxyManager.h"
+#include "stealth/UndetectableStealth.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QToolBar>
@@ -197,6 +198,10 @@ QWebEngineView* BrowserWindow::createWebView()
     // Create page with shared profile
     QWebEnginePage* page = new QWebEnginePage(m_webProfile, webView);
     webView->setPage(page);
+    
+    // Apply undetectable stealth mode
+    UndetectableStealth::applyStealthMode(page);
+    UndetectableStealth::applyStealthProfile(m_webProfile);
     
     // Configure page settings
     QWebEngineSettings* settings = page->settings();

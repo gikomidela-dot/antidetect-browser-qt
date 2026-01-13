@@ -1,0 +1,34 @@
+SECTA Anti Detect - Установка на Ubuntu/Debian
+==============================================
+
+1. Установите зависимости Qt6:
+   sudo apt update
+   sudo apt install qt6-base-dev qt6-webengine-dev libqt6webenginecore6 libqt6webenginewidgets6
+
+2. Распакуйте архив:
+   unzip SECTA-Linux-x64.zip
+   cd SECTA-Linux-x64
+
+3. Сделайте файл исполняемым:
+   chmod +x SECTAAntiDetect
+
+4. Запустите:
+   ./SECTAAntiDetect
+
+Если не запускается, установите дополнительные библиотеки:
+   sudo apt install libgl1-mesa-glx libxcb-xinerama0 libxcb-cursor0
+
+Для Manjaro/Arch:
+   sudo pacman -S qt6-base qt6-webengine
+
+Возможные проблемы:
+- Если ошибка "cannot open shared object file":
+  sudo apt install qt6-base-dev qt6-webengine-dev
+
+- Если ошибка с WebEngine:
+  sudo apt install libqt6webenginecore6-bin
+
+Файл находится здесь:
+/home/x/.qodo/antidetect-browser-qt/SECTA-Linux-x64.zip
+
+Скопируйте его на свой компьютер и следуйте инструкциям выше.
